@@ -118,7 +118,50 @@ int main(int argc, const char *argv[]) {
         LGAssert([clonedReadme containsString:@"libgit2Objc Demo"], @"克隆内容校验失败");
         NSLog(@"克隆内容校验通过 ✅");
 
-        // ---------- 9. 用短 SHA 查找提交 ----------
+        // ---------- 9. 远程 push / pull ----------
+        section(@"远程 push / pull");
+        // 9.1 创建一个 bare 仓库作为远程
+        NSString *barePath = [baseDir stringByAppendingPathComponent:@"demo-remote.git"];
+        LGRepository *bare = [LGRepository initializeAtPath:barePath bare:YES error:&error];
+        LGAssert(bare, error.description);
+        NSLog(@"bare 远程仓库: %@", bare.repositoryPath);
+
+        // 9.2 原仓库添加 origin 并 push 当前分支
+        LGRemote *origin = [repo createRemoteWithName:@"origin" url:barePath error:&error];
+        LGAssert(origin, error.description);
+        LGAssert([origin pushCurrentBranchWithError:&error], error.description);
+        NSLog(@"push 完成: master -> %@", origin.name);
+
+        // 9.3 从 bare 仓库克隆第二份，提交新文件后 push
+        NSString *clone2Path = [baseDir stringByAppendingPathComponent:@"demo-repo-clone2"];
+        LGRepository *clone2 = [LGRepository cloneFromURL:barePath toPath:clone2Path error:&error];
+        LGAssert(clone2, error.description);
+        [clone2 setConfigString:@"Clone2 User" forKey:@"user.name" error:nil];
+        [clone2 setConfigString:@"clone2@example.com" forKey:@"user.email" error:nil];
+        LGSignature *sig2 = [LGSignature signatureWithName:@"Clone2 User"
+                                                     email:@"clone2@example.com"
+                                                     error:&error];
+        LGAssert(sig2, error.description);
+        writeFile([clone2Path stringByAppendingPathComponent:@"from-clone2.txt"], @"来自 clone2 的提交\n");
+        LGAssert([clone2.index addFileWithPath:@"from-clone2.txt" error:&error], error.description);
+        LGCommit *c4 = [clone2 commitWithMessage:@"Add from-clone2.txt" author:sig2 committer:sig2 error:&error];
+        LGAssert(c4, error.description);
+        LGRemote *origin2 = [clone2 remoteWithName:@"origin" error:&error];
+        LGAssert(origin2, error.description);
+        LGAssert([origin2 pushCurrentBranchWithError:&error], error.description);
+        NSLog(@"clone2 提交并 push: %@ %@", c4.shortOID, c4.summary);
+
+        // 9.4 原仓库 pull，应 fast-forward 到 clone2 的提交
+        LGRemote *origin3 = [repo remoteWithName:@"origin" error:&error];
+        LGAssert(origin3, error.description);
+        LGAssert([origin3 pullWithError:&error], error.description);
+        NSString *pulled = [NSString stringWithContentsOfFile:[repoPath stringByAppendingPathComponent:@"from-clone2.txt"]
+                                                     encoding:NSUTF8StringEncoding error:nil];
+        LGAssert([pulled containsString:@"clone2"], @"pull 后未找到 clone2 的文件");
+        NSLog(@"pull 完成 (fast-forward)，当前 HEAD: %@", [repo headCommitWithError:nil].shortOID);
+        NSLog(@"工作区校验通过 ✅");
+
+        // ---------- 10. 用短 SHA 查找提交 ----------
         section(@"按短 SHA 查找提交");
         LGCommit *found = [clone commitWithOID:commit2.shortOID error:&error];
         LGAssert(found, error.description);

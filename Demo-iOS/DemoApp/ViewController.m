@@ -27,6 +27,7 @@
     [buttons addArrangedSubview:[self makeButton:@"1. 建仓库+提交" action:@selector(createRepo)]];
     [buttons addArrangedSubview:[self makeButton:@"2. 状态+历史" action:@selector(showStatusAndLog)]];
     [buttons addArrangedSubview:[self makeButton:@"3. 克隆" action:@selector(cloneRepo)]];
+    [buttons addArrangedSubview:[self makeButton:@"4. push/pull" action:@selector(remoteOps)]];
 
     // 日志输出
     self.logView = [[UITextView alloc] init];
@@ -132,6 +133,38 @@
     [self log:[NSString stringWithFormat:@"✅ 克隆成功: %@\n", clone.workDirectoryPath]];
     [self log:[NSString stringWithFormat:@"  分支: %@, 远程: %@\n",
                clone.currentBranchName, [clone remoteNamesWithError:nil]]];
+}
+
+#pragma mark - 步骤 4：push / pull
+
+- (void)remoteOps {
+    NSError *error = nil;
+    LGRepository *repo = [LGRepository repositoryAtPath:self.repoPath error:&error];
+    if (!repo) return [self log:[NSString stringWithFormat:@"❌ 打开失败: %@\n", error.localizedDescription]];
+
+    // 以 Document 下的 bare 仓库作为远程
+    NSString *docs = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+    NSString *barePath = [docs stringByAppendingPathComponent:@"demo-remote.git"];
+    [[NSFileManager defaultManager] removeItemAtPath:barePath error:nil];
+    LGRepository *bare = [LGRepository initializeAtPath:barePath bare:YES error:&error];
+    if (!bare) return [self log:[NSString stringWithFormat:@"❌ 创建远程失败: %@\n", error.localizedDescription]];
+
+    // 已存在 origin 则直接取用，否则创建
+    LGRemote *origin = [repo remoteWithName:@"origin" error:nil];
+    if (!origin) {
+        origin = [repo createRemoteWithName:@"origin" url:barePath error:&error];
+    }
+    if (!origin) return [self log:[NSString stringWithFormat:@"❌ 添加远程失败: %@\n", error.localizedDescription]];
+
+    if (![origin pushCurrentBranchWithError:&error]) {
+        return [self log:[NSString stringWithFormat:@"❌ push 失败: %@\n", error.localizedDescription]];
+    }
+    [self log:[NSString stringWithFormat:@"✅ push 完成: %@ -> %@\n", repo.currentBranchName, origin.name]];
+
+    if (![origin pullWithError:&error]) {
+        return [self log:[NSString stringWithFormat:@"❌ pull 失败: %@\n", error.localizedDescription]];
+    }
+    [self log:@"✅ pull 完成（已是最新）\n"];
 }
 
 @end

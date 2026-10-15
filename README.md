@@ -23,6 +23,7 @@ libgit2 的 Objective-C 封装 SDK，附带可运行 Demo，已制作成 CocoaPo
 │       ├── LGIndex.h/.m        # 暂存区
 │       ├── LGSignature.h/.m    # 提交签名（name/email/date）
 │       ├── LGStatusEntry.h/.m  # 工作区状态条目
+│       ├── LGRemote.h/.m       # 远程仓库：fetch / push / pull（自动合并）
 │       ├── LGError.h/.m        # NSError 错误封装
 │       └── Internal/           # 内部头文件（不对外公开）
 ├── External/libgit2/           # libgit2 v1.8.4 源码（构建产物在 build/ 下，已 gitignore）
@@ -38,7 +39,7 @@ libgit2 的 Objective-C 封装 SDK，附带可运行 Demo，已制作成 CocoaPo
 Podfile 中声明（已发布到 GitHub，预编译产物随仓库分发，开箱即用）：
 
 ```ruby
-pod 'libgit2Objc', :git => 'https://github.com/lsgeek/libgit2Objc.git', :tag => '0.1.0'
+pod 'libgit2Objc', :git => 'https://github.com/lsgeek/libgit2Objc.git', :tag => '0.2.0'
 ```
 
 本地开发时使用路径引用更方便：
@@ -62,7 +63,7 @@ pod lib lint libgit2Objc.podspec --allow-warnings
 ./Demo/build.sh
 ```
 
-演示内容：初始化仓库 → 配置用户 → 两次提交 → 创建/切换 feature 分支 → 查看状态/历史/分支 → 本地克隆 → 短 SHA 查找提交。
+演示内容：初始化仓库 → 配置用户 → 两次提交 → 创建/切换 feature 分支 → 查看状态/历史/分支 → 本地克隆 → 远程 push / pull（含 fast-forward 与自动合并）→ 短 SHA 查找提交。
 
 ### 3. 运行 iOS Demo App
 
@@ -107,6 +108,16 @@ LGReference *branch = [repo createBranchWithName:@"feature"
 NSArray<LGCommit *> *history = [repo commitsWithMaxCount:20 error:nil];
 NSArray<LGStatusEntry *> *status = [repo statusWithError:nil];
 NSString *branchName = repo.currentBranchName;
+
+// 远程操作
+LGRemote *origin = [repo createRemoteWithName:@"origin"
+                                          url:@"https://github.com/you/repo.git"
+                                        error:nil];
+origin.username = @"you";          // HTTPS 认证（可选）
+origin.password = @"token";
+[origin pushCurrentBranchWithError:nil];  // push 当前分支到远程同名分支
+[origin pullWithError:nil];               // fetch + 合并（fast-forward 或自动 merge commit）
+[origin fetchWithError:nil];              // 仅拉取远程跟踪分支
 ```
 
 ## 重新编译 libgit2

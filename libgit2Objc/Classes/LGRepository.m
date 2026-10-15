@@ -9,6 +9,8 @@
 #import "LGSignature+Internal.h"
 #import "LGStatusEntry.h"
 #import "LGStatusEntry+Internal.h"
+#import "LGRemote.h"
+#import "LGRemote+Internal.h"
 #import "LGError.h"
 #import <git2.h>
 
@@ -437,6 +439,30 @@
     }
     LGReference *reference = [[LGReference alloc] initWithGitReference:branch];
     return [self checkoutReference:reference error:error];
+}
+
+#pragma mark - 远程仓库
+
+- (nullable LGRemote *)createRemoteWithName:(NSString *)name
+                                        url:(NSString *)url
+                                      error:(NSError **)error {
+    git_remote *remote = NULL;
+    int status = git_remote_create(&remote, _repository, name.UTF8String, url.UTF8String);
+    if (status != GIT_OK) {
+        if (error) *error = [NSError lg_errorWithGitCode:status];
+        return nil;
+    }
+    return [[LGRemote alloc] initWithGitRemote:remote repository:_repository];
+}
+
+- (nullable LGRemote *)remoteWithName:(NSString *)name error:(NSError **)error {
+    git_remote *remote = NULL;
+    int status = git_remote_lookup(&remote, _repository, name.UTF8String);
+    if (status != GIT_OK) {
+        if (error) *error = [NSError lg_errorWithGitCode:status];
+        return nil;
+    }
+    return [[LGRemote alloc] initWithGitRemote:remote repository:_repository];
 }
 
 - (NSString *)description {

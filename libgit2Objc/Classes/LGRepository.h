@@ -2,7 +2,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class LGIndex, LGCommit, LGReference, LGSignature, LGStatusEntry;
+@class LGIndex, LGCommit, LGReference, LGSignature, LGStatusEntry, LGRemote;
 
 /// git 仓库
 @interface LGRepository : NSObject
@@ -77,6 +77,16 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// 检出分支（按短名，如 "main"）
 - (BOOL)checkoutBranchWithName:(NSString *)name error:(NSError **)error;
+
+#pragma mark - 远程仓库
+
+/// 创建远程（如 origin）并写入配置
+- (nullable LGRemote *)createRemoteWithName:(NSString *)name
+                                        url:(NSString *)url
+                                      error:(NSError **)error;
+
+/// 按名获取远程（如 "origin"）
+- (nullable LGRemote *)remoteWithName:(NSString *)name error:(NSError **)error;
 
 @end
 

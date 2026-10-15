@@ -13,4 +13,5 @@ FOUNDATION_EXPORT const unsigned char libgit2ObjcVersionString[];
 #import "LGIndex.h"
 #import "LGSignature.h"
 #import "LGStatusEntry.h"
+#import "LGRemote.h"
 #import "LGError.h"
