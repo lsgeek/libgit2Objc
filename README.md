@@ -23,7 +23,8 @@ libgit2 的 Objective-C 封装 SDK，附带可运行 Demo，已制作成 CocoaPo
 │       ├── LGIndex.h/.m        # 暂存区
 │       ├── LGSignature.h/.m    # 提交签名（name/email/date）
 │       ├── LGStatusEntry.h/.m  # 工作区状态条目
-│       ├── LGRemote.h/.m       # 远程仓库：fetch / push / pull（自动合并）
+│       ├── LGRemote.h/.m       # 远程仓库：fetch / push / pull（同步 + 异步）
+│       ├── LGTransferProgress.h/.m # 传输进度对象（对象数/字节数）
 │       ├── LGError.h/.m        # NSError 错误封装
 │       └── Internal/           # 内部头文件（不对外公开）
 ├── External/libgit2/           # libgit2 v1.8.4 源码（构建产物在 build/ 下，已 gitignore）
@@ -39,7 +40,7 @@ libgit2 的 Objective-C 封装 SDK，附带可运行 Demo，已制作成 CocoaPo
 Podfile 中声明（已发布到 GitHub，预编译产物随仓库分发，开箱即用）：
 
 ```ruby
-pod 'libgit2Objc', :git => 'https://github.com/lsgeek/libgit2Objc.git', :tag => '0.2.0'
+pod 'libgit2Objc', :git => 'https://github.com/lsgeek/libgit2Objc.git', :tag => '0.3.0'
 ```
 
 本地开发时使用路径引用更方便：
@@ -109,7 +110,7 @@ NSArray<LGCommit *> *history = [repo commitsWithMaxCount:20 error:nil];
 NSArray<LGStatusEntry *> *status = [repo statusWithError:nil];
 NSString *branchName = repo.currentBranchName;
 
-// 远程操作
+// 远程操作（同步接口：调用线程阻塞至完成，请勿在主线程调用）
 LGRemote *origin = [repo createRemoteWithName:@"origin"
                                           url:@"https://github.com/you/repo.git"
                                         error:nil];
@@ -118,6 +119,13 @@ origin.password = @"token";
 [origin pushCurrentBranchWithError:nil];  // push 当前分支到远程同名分支
 [origin pullWithError:nil];               // fetch + 合并（fast-forward 或自动 merge commit）
 [origin fetchWithError:nil];              // 仅拉取远程跟踪分支
+
+// 异步接口：后台队列执行，进度与完成回调均在主线程（可直接刷新 UI）
+[origin pullWithProgress:^(LGTransferProgress *progress) {
+    NSLog(@"%@", progress.localizedDescription);   // 如 "12/30 对象，已接收 45 KB"
+} completion:^(BOOL success, NSError *error) {
+    if (success) { /* 更新 UI */ }
+}];
 ```
 
 ## 重新编译 libgit2

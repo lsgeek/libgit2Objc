@@ -156,15 +156,27 @@
     }
     if (!origin) return [self log:[NSString stringWithFormat:@"❌ 添加远程失败: %@\n", error.localizedDescription]];
 
-    if (![origin pushCurrentBranchWithError:&error]) {
-        return [self log:[NSString stringWithFormat:@"❌ push 失败: %@\n", error.localizedDescription]];
-    }
-    [self log:[NSString stringWithFormat:@"✅ push 完成: %@ -> %@\n", repo.currentBranchName, origin.name]];
+    // 异步 push（后台线程执行，进度与完成回调都在主线程，可直接刷新 UI）
+    [self log:[NSString stringWithFormat:@"push %@ -> %@ 中...\n", repo.currentBranchName, origin.name]];
+    [origin pushCurrentBranchWithProgress:^(LGTransferProgress *progress) {
+        [self log:[NSString stringWithFormat:@"  进度: %@\n", progress.localizedDescription]];
+    } completion:^(BOOL success, NSError *error) {
+        if (!success) {
+            [self log:[NSString stringWithFormat:@"❌ push 失败: %@\n", error.localizedDescription]];
+            return;
+        }
+        [self log:@"✅ push 完成\n"];
 
-    if (![origin pullWithError:&error]) {
-        return [self log:[NSString stringWithFormat:@"❌ pull 失败: %@\n", error.localizedDescription]];
-    }
-    [self log:@"✅ pull 完成（已是最新）\n"];
+        // push 成功后接着异步 pull
+        [self log:@"pull 中...\n"];
+        [origin pullWithProgress:nil completion:^(BOOL success, NSError *error) {
+            if (!success) {
+                [self log:[NSString stringWithFormat:@"❌ pull 失败: %@\n", error.localizedDescription]];
+                return;
+            }
+            [self log:@"✅ pull 完成（已是最新）\n"];
+        }];
+    }];
 }
 
 @end

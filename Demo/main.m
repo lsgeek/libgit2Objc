@@ -161,7 +161,28 @@ int main(int argc, const char *argv[]) {
         NSLog(@"pull 完成 (fast-forward)，当前 HEAD: %@", [repo headCommitWithError:nil].shortOID);
         NSLog(@"工作区校验通过 ✅");
 
-        // ---------- 10. 用短 SHA 查找提交 ----------
+        // ---------- 10. 异步 pull（进度回调 + 主线程完成回调） ----------
+        section(@"异步 pull（进度回调）");
+        LGRemote *cloneOrigin = [clone remoteWithName:@"origin" error:&error];
+        LGAssert(cloneOrigin, error.description);
+        __block BOOL asyncDone = NO;
+        [cloneOrigin pullWithProgress:^(LGTransferProgress *progress) {
+            NSLog(@"  进度: %@", progress.localizedDescription);
+        } completion:^(BOOL success, NSError *err) {
+            LGAssert(success, err.description);
+            NSLog(@"✅ 异步 pull 完成，clone HEAD: %@", [clone headCommitWithError:nil].shortOID);
+            asyncDone = YES;
+        }];
+        // CLI 无主线程 runloop，手动驱动以接收主队列回调
+        while (!asyncDone) {
+            [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
+        }
+        NSString *ffFile = [NSString stringWithContentsOfFile:[clonePath stringByAppendingPathComponent:@"from-clone2.txt"]
+                                                     encoding:NSUTF8StringEncoding error:nil];
+        LGAssert([ffFile containsString:@"clone2"], @"clone 异步 pull 后未获得新文件");
+        NSLog(@"clone fast-forward 校验通过 ✅");
+
+        // ---------- 11. 用短 SHA 查找提交 ----------
         section(@"按短 SHA 查找提交");
         LGCommit *found = [clone commitWithOID:commit2.shortOID error:&error];
         LGAssert(found, error.description);

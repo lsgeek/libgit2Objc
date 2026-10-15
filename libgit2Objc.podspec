@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'libgit2Objc'
-  s.version          = '0.2.0'
+  s.version          = '0.3.0'
   s.summary          = 'libgit2 的 Objective-C 封装 SDK，支持 iOS 与 macOS'
   s.description      = <<-DESC
     libgit2Objc 对 libgit2 (v1.8.4) 静态库做了面向对象的 Objective-C 封装，
