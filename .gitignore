@@ -1,5 +1,6 @@
-# libgit2 构建产物（体积大，首次 pod install / 运行脚本时自动生成）
-External/libgit2/build/
+# libgit2 构建产物说明:
+# 预编译 XCFramework 已提交进仓库，使用者 pod install 时开箱即用。
+# 如需重新编译：rm -rf External/libgit2/build && ./Scripts/build_libgit2.sh
 
 # Demo 构建产物
 build-demo/

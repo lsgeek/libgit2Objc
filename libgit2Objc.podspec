@@ -8,10 +8,10 @@ Pod::Spec.new do |s|
     底层以 XCFramework 形式预编译（iOS 真机/模拟器、macOS），开箱即用。
   DESC
 
-  s.homepage         = 'https://github.com/liuonion/libgit2Objc'
+  s.homepage         = 'https://github.com/lsgeek/libgit2Objc'
   s.license          = { :type => 'MIT', :file => 'LICENSE' }
-  s.author           = { 'liuonion' => 'liuonion@example.com' }
-  s.source           = { :git => 'https://github.com/liuonion/libgit2Objc.git', :tag => s.version.to_s }
+  s.author           = { 'lsgeek' => 'lsgeek@126.com' }
+  s.source           = { :git => 'https://github.com/lsgeek/libgit2Objc.git', :tag => s.version.to_s }
 
   s.ios.deployment_target = '15.0'
   s.osx.deployment_target = '12.0'
