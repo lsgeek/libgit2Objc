@@ -140,6 +140,13 @@ build "arm64" "iphoneos" "iphoneos" "15.0" \
 build "arm64;x86_64" "iphonesimulator" "iphonesimulator" "15.0" \
     "iossimulator-arm64-xcrun:simulator-arm64" "iossimulator-x86_64-xcrun:simulator-x86_64"
 
+# OpenSSL 头文件（SDK 的密钥生成类编译需要）：先放入各平台 include 目录，
+# 随 vendored xcframework 的 Headers 自动加入搜索路径，无需额外 xcconfig
+for inc in "$BUILD_DIR/install-macos/include" "$BUILD_DIR/install-iphoneos/include" \
+           "$BUILD_DIR/install-iphonesimulator/include"; do
+    cp -R "$BUILD_DIR/openssl-macos-arm64/include/openssl" "$inc/"
+done
+
 # 打包为 XCFramework（真机/模拟器 arm64 架构重名，无法用 lipo 合并 fat 库）
 xcodebuild -create-xcframework \
     -library "$BUILD_DIR/install-macos/lib/libgit2-merged.a" -headers "$BUILD_DIR/install-macos/include" \
@@ -149,11 +156,6 @@ xcodebuild -create-xcframework \
 
 # 头文件（使用 macOS 构建产出的即可，均为 Apple 平台通用）
 cp -R "$BUILD_DIR/install-macos/include/." "$OUT_INC_DIR/"
-
-# OpenSSL 头文件（SDK 的密钥生成类编译需要，已随库一起静态链接）
-rm -rf "$BUILD_DIR/include-openssl"
-mkdir -p "$BUILD_DIR/include-openssl"
-cp -R "$BUILD_DIR/openssl-macos-arm64/include/openssl" "$BUILD_DIR/include-openssl/"
 
 echo "==> 构建完成:"
 ls "$OUT_LIB_DIR/libgit2.xcframework/"
