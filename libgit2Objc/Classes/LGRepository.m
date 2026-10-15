@@ -11,6 +11,7 @@
 #import "LGStatusEntry+Internal.h"
 #import "LGRemote.h"
 #import "LGRemote+Internal.h"
+#import "LGRemoteAuthContext.h"
 #import "LGError.h"
 #import <git2.h>
 
@@ -64,8 +65,21 @@
 + (nullable instancetype)cloneFromURL:(NSString *)url
                                toPath:(NSString *)path
                                 error:(NSError **)error {
+    return [self cloneFromURL:url toPath:path credentials:nil error:error];
+}
+
++ (nullable instancetype)cloneFromURL:(NSString *)url
+                               toPath:(NSString *)path
+                          credentials:(nullable LGRemoteCredentials *)credentials
+                                error:(NSError **)error {
     [self initializeLibgit2];
     git_clone_options options = GIT_CLONE_OPTIONS_INIT;
+    // 认证上下文在 git_clone 返回前一直有效（同步调用），由调用栈持有
+    LGRemoteAuthContext *context = [[LGRemoteAuthContext alloc] initWithCredentials:credentials];
+    if (credentials) {
+        options.fetch_opts.callbacks.credentials = LGRemoteAuthCallback;
+        options.fetch_opts.callbacks.payload = (__bridge void *)context;
+    }
     git_repository *repo = NULL;
     int status = git_clone(&repo, url.UTF8String, path.UTF8String, &options);
     if (status != GIT_OK) {

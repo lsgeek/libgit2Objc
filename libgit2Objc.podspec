@@ -1,10 +1,11 @@
 Pod::Spec.new do |s|
   s.name             = 'libgit2Objc'
-  s.version          = '0.3.0'
+  s.version          = '0.4.0'
   s.summary          = 'libgit2 的 Objective-C 封装 SDK，支持 iOS 与 macOS'
   s.description      = <<-DESC
     libgit2Objc 对 libgit2 (v1.8.4) 静态库做了面向对象的 Objective-C 封装，
-    提供仓库管理、提交、分支、检出、状态、克隆等常用 Git 操作，
+    提供仓库管理、提交、分支、检出、状态、克隆、远程 fetch/push/pull（含进度回调与异步接口）、
+    HTTPS 用户名密码与 SSH 密钥（ed25519/RSA/ECDSA，基于 libssh2 + OpenSSL）认证。
     底层以 XCFramework 形式预编译（iOS 真机/模拟器、macOS），开箱即用。
   DESC
 

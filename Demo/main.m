@@ -182,7 +182,27 @@ int main(int argc, const char *argv[]) {
         LGAssert([ffFile containsString:@"clone2"], @"clone 异步 pull 后未获得新文件");
         NSLog(@"clone fast-forward 校验通过 ✅");
 
-        // ---------- 11. 用短 SHA 查找提交 ----------
+        // ---------- 11. SSH 密钥认证（真实克隆 GitHub 仓库） ----------
+        section(@"SSH 密钥认证（clone github.com）");
+        LGRemoteCredentials *sshCreds = [[LGRemoteCredentials alloc] init];
+        // 使用本机 SSH 私钥文件认证（公钥自动取 私钥路径 + ".pub"）
+        sshCreds.SSHPrivateKeyPath = [NSHomeDirectory() stringByAppendingPathComponent:@".ssh/id_ed25519"];
+        NSString *sshPath = [baseDir stringByAppendingPathComponent:@"ssh-repo"];
+        LGRepository *sshRepo = [LGRepository cloneFromURL:@"git@github.com:lsgeek/libgit2Objc.git"
+                                                    toPath:sshPath
+                                               credentials:sshCreds
+                                                     error:&error];
+        LGAssert(sshRepo, error.description);
+        NSLog(@"✅ SSH 克隆成功: %@", sshRepo.workDirectoryPath);
+        NSLog(@"   最新提交: %@", [sshRepo headCommitWithError:nil].summary);
+        // 克隆出的 remote 同样可以用密钥做后续 fetch / push
+        LGRemote *sshOrigin = [sshRepo remoteWithName:@"origin" error:&error];
+        LGAssert(sshOrigin, error.description);
+        [sshOrigin applyCredentials:sshCreds];
+        LGAssert([sshOrigin fetchWithError:&error], error.description);
+        NSLog(@"✅ SSH 认证 fetch 成功");
+
+        // ---------- 12. 用短 SHA 查找提交 ----------
         section(@"按短 SHA 查找提交");
         LGCommit *found = [clone commitWithOID:commit2.shortOID error:&error];
         LGAssert(found, error.description);

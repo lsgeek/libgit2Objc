@@ -1,71 +1,8 @@
 #import "LGRemote.h"
 #import "LGRemote+Internal.h"
+#import "LGRemoteAuthContext.h"
 #import "LGTransferProgress.h"
-#import "LGTransferProgress+Internal.h"
 #import "LGError.h"
-
-/// 回调上下文：承载一次操作的认证信息与进度回调（同步接口传入 LGRemote 本身）
-@interface LGRemoteCallbacksContext : NSObject
-@property (nonatomic, copy, nullable) NSString *username;
-@property (nonatomic, copy, nullable) NSString *password;
-@property (nonatomic, copy, nullable) LGRemoteProgressBlock progressBlock;
-@end
-
-@implementation LGRemoteCallbacksContext
-@end
-
-/// 认证回调：payload 为 LGRemote 或 LGRemoteCallbacksContext（均通过 KVC 取 username/password）
-static int LGAuthCallback(git_credential **out,
-                          const char *url,
-                          const char *usernameFromURL,
-                          unsigned int allowedTypes,
-                          void *payload) {
-    id context = (__bridge id)payload;
-    NSString *username = [context valueForKey:@"username"];
-    NSString *password = [context valueForKey:@"password"];
-    if (username.length > 0) {
-        const char *user = usernameFromURL ? usernameFromURL : username.UTF8String;
-        return git_credential_userpass_plaintext_new(out, user, password.UTF8String ?: "");
-    }
-    return GIT_PASSTHROUGH;
-}
-
-/// fetch 进度回调（libgit2 工作线程触发，转发到主线程）
-static int LGFetchProgressCallback(const git_indexer_progress *stats, void *payload) {
-    LGRemoteCallbacksContext *context = (__bridge LGRemoteCallbacksContext *)payload;
-    if (context.progressBlock) {
-        LGTransferProgress *progress = [[LGTransferProgress alloc]
-            initWithTotalObjects:stats->total_objects
-            transferredObjects:stats->received_objects
-            indexedObjects:stats->indexed_objects
-            transferredBytes:stats->received_bytes
-            isPush:NO];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            context.progressBlock(progress);
-        });
-    }
-    return 0;
-}
-
-/// push 进度回调（libgit2 工作线程触发，转发到主线程）
-static int LGPushProgressCallback(unsigned int current,
-                                  unsigned int total,
-                                  size_t bytes,
-                                  void *payload) {
-    LGRemoteCallbacksContext *context = (__bridge LGRemoteCallbacksContext *)payload;
-    if (context.progressBlock) {
-        LGTransferProgress *progress = [[LGTransferProgress alloc]
-            initWithTotalObjects:total
-            transferredObjects:current
-            indexedObjects:0
-            transferredBytes:bytes
-            isPush:YES];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            context.progressBlock(progress);
-        });
-    }
-    return 0;
-}
 
 @implementation LGRemote
 
@@ -107,19 +44,27 @@ static int LGPushProgressCallback(unsigned int current,
 
 #pragma mark - 核心实现（同步/异步共用）
 
-/// 同步上下文的凭证取自 LGRemote 当前配置
-- (LGRemoteCallbacksContext *)syncContext {
-    LGRemoteCallbacksContext *context = [[LGRemoteCallbacksContext alloc] init];
-    context.username = self.username;
-    context.password = self.password;
-    return context;
+/// 生成回调上下文：凭证取自 LGRemote 当前配置
+- (LGRemoteAuthContext *)callbacksContext {
+    return [[LGRemoteAuthContext alloc] initWithCredentialSource:self];
+}
+
+/// 批量应用认证配置（与逐个设置属性等价）
+- (void)applyCredentials:(LGRemoteCredentials *)credentials {
+    self.username = credentials.username;
+    self.password = credentials.password;
+    self.SSHUsername = credentials.SSHUsername;
+    self.SSHPrivateKeyPath = credentials.SSHPrivateKeyPath;
+    self.SSHPublicKeyPath = credentials.SSHPublicKeyPath;
+    self.SSHPassphrase = credentials.SSHPassphrase;
+    self.useSSHAgent = credentials.useSSHAgent;
 }
 
 /// 核心 fetch，返回 git 状态码
-- (int)performFetchWithContext:(LGRemoteCallbacksContext *)context error:(NSError **)error {
+- (int)performFetchWithContext:(LGRemoteAuthContext *)context error:(NSError **)error {
     git_fetch_options options = GIT_FETCH_OPTIONS_INIT;
-    options.callbacks.credentials = LGAuthCallback;
-    options.callbacks.transfer_progress = LGFetchProgressCallback;
+    options.callbacks.credentials = LGRemoteAuthCallback;
+    options.callbacks.transfer_progress = LGRemoteFetchProgressCallback;
     options.callbacks.payload = (__bridge void *)context;
     int status = git_remote_fetch(_gitRemote, NULL, &options, NULL);
     if (status != GIT_OK && error) *error = [NSError lg_errorWithGitCode:status];
@@ -127,7 +72,7 @@ static int LGPushProgressCallback(unsigned int current,
 }
 
 /// 核心 push，返回 git 状态码
-- (int)performPushCurrentBranchWithContext:(LGRemoteCallbacksContext *)context error:(NSError **)error {
+- (int)performPushCurrentBranchWithContext:(LGRemoteAuthContext *)context error:(NSError **)error {
     NSString *branch = [self currentBranchName];
     if (!branch) {
         if (error) *error = [NSError errorWithDomain:LGGitErrorDomain
@@ -141,8 +86,8 @@ static int LGPushProgressCallback(unsigned int current,
     git_strarray specs = { (char **)refspecs, 1 };
 
     git_push_options options = GIT_PUSH_OPTIONS_INIT;
-    options.callbacks.credentials = LGAuthCallback;
-    options.callbacks.push_transfer_progress = LGPushProgressCallback;
+    options.callbacks.credentials = LGRemoteAuthCallback;
+    options.callbacks.push_transfer_progress = LGRemotePushProgressCallback;
     options.callbacks.payload = (__bridge void *)context;
     int status = git_remote_push(_gitRemote, &specs, &options);
     if (status != GIT_OK && error) *error = [NSError lg_errorWithGitCode:status];
@@ -150,7 +95,7 @@ static int LGPushProgressCallback(unsigned int current,
 }
 
 /// 核心 pull（fetch + 合并），返回 git 状态码
-- (int)performPullWithContext:(LGRemoteCallbacksContext *)context error:(NSError **)error {
+- (int)performPullWithContext:(LGRemoteAuthContext *)context error:(NSError **)error {
     // 1. fetch
     int status = [self performFetchWithContext:context error:error];
     if (status != GIT_OK) return status;
@@ -201,26 +146,24 @@ static int LGPushProgressCallback(unsigned int current,
 #pragma mark - 同步接口
 
 - (BOOL)fetchWithError:(NSError **)error {
-    return [self performFetchWithContext:[self syncContext] error:error] == GIT_OK;
+    return [self performFetchWithContext:[self callbacksContext] error:error] == GIT_OK;
 }
 
 - (BOOL)pushCurrentBranchWithError:(NSError **)error {
-    return [self performPushCurrentBranchWithContext:[self syncContext] error:error] == GIT_OK;
+    return [self performPushCurrentBranchWithContext:[self callbacksContext] error:error] == GIT_OK;
 }
 
 - (BOOL)pullWithError:(NSError **)error {
-    return [self performPullWithContext:[self syncContext] error:error] == GIT_OK;
+    return [self performPullWithContext:[self callbacksContext] error:error] == GIT_OK;
 }
 
 #pragma mark - 异步接口
 
 /// 异步执行模板：后台队列跑核心实现，进度与完成回调在主线程
-- (void)performOperation:(int (^)(LGRemoteCallbacksContext *context, NSError **error))operation
+- (void)performOperation:(int (^)(LGRemoteAuthContext *context, NSError **error))operation
                 progress:(nullable LGRemoteProgressBlock)progress
               completion:(LGRemoteCompletionBlock)completion {
-    LGRemoteCallbacksContext *context = [[LGRemoteCallbacksContext alloc] init];
-    context.username = self.username;
-    context.password = self.password;
+    LGRemoteAuthContext *context = [self callbacksContext];
     context.progressBlock = progress;
 
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
@@ -237,21 +180,21 @@ static int LGPushProgressCallback(unsigned int current,
 
 - (void)fetchWithProgress:(LGRemoteProgressBlock)progress
                completion:(LGRemoteCompletionBlock)completion {
-    [self performOperation:^int(LGRemoteCallbacksContext *context, NSError **error) {
+    [self performOperation:^int(LGRemoteAuthContext *context, NSError **error) {
         return [self performFetchWithContext:context error:error];
     } progress:progress completion:completion];
 }
 
 - (void)pushCurrentBranchWithProgress:(LGRemoteProgressBlock)progress
                            completion:(LGRemoteCompletionBlock)completion {
-    [self performOperation:^int(LGRemoteCallbacksContext *context, NSError **error) {
+    [self performOperation:^int(LGRemoteAuthContext *context, NSError **error) {
         return [self performPushCurrentBranchWithContext:context error:error];
     } progress:progress completion:completion];
 }
 
 - (void)pullWithProgress:(LGRemoteProgressBlock)progress
               completion:(LGRemoteCompletionBlock)completion {
-    [self performOperation:^int(LGRemoteCallbacksContext *context, NSError **error) {
+    [self performOperation:^int(LGRemoteAuthContext *context, NSError **error) {
         return [self performPullWithContext:context error:error];
     } progress:progress completion:completion];
 }

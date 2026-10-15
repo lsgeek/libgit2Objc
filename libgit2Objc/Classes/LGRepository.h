@@ -2,7 +2,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class LGIndex, LGCommit, LGReference, LGSignature, LGStatusEntry, LGRemote;
+@class LGIndex, LGCommit, LGReference, LGSignature, LGStatusEntry, LGRemote, LGRemoteCredentials;
 
 /// git 仓库
 @interface LGRepository : NSObject
@@ -18,9 +18,15 @@ NS_ASSUME_NONNULL_BEGIN
                                      bare:(BOOL)bare
                                     error:(NSError **)error;
 
-/// 克隆仓库（支持 https:// 与本地 file:// 或裸路径）
+/// 克隆仓库（支持 https://、ssh://、git@host:path 与本地路径；公开仓库/本地路径可传 nil）
 + (nullable instancetype)cloneFromURL:(NSString *)url
                                toPath:(NSString *)path
+                                error:(NSError **)error;
+
+/// 克隆仓库并携带认证配置（SSH 私钥仓库或私有 HTTPS 仓库使用）
++ (nullable instancetype)cloneFromURL:(NSString *)url
+                               toPath:(NSString *)path
+                          credentials:(nullable LGRemoteCredentials *)credentials
                                 error:(NSError **)error;
 
 /// .git 目录路径（bare 仓库为仓库本身）

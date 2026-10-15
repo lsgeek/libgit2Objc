@@ -1,6 +1,9 @@
 # libgit2 构建产物说明:
-# 预编译 XCFramework 已提交进仓库，使用者 pod install 时开箱即用。
-# 如需重新编译：rm -rf External/libgit2/build && ./Scripts/build_libgit2.sh
+# 仅提交预编译产物（libgit2.xcframework + git2 头文件），使用者 pod install 开箱即用。
+# 中间产物与依赖构建树不入库。重新编译: rm -rf External/libgit2/build && ./Scripts/build_libgit2.sh
+External/libgit2/build/*
+!External/libgit2/build/lib/
+!External/libgit2/build/include/
 
 # Demo 构建产物
 build-demo/

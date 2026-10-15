@@ -2,7 +2,7 @@
 
 libgit2 的 Objective-C 封装 SDK，附带可运行 Demo，已制作成 CocoaPods 组件。
 
-底层使用 [libgit2](https://github.com/libgit2/libgit2) **v1.8.4** 预编译静态库（XCFramework 形式，HTTPS 基于 SecureTransport），支持：
+底层使用 [libgit2](https://github.com/libgit2/libgit2) **v1.8.4** 预编译静态库（XCFramework 形式，HTTPS 基于 SecureTransport，SSH 基于 libssh2 + OpenSSL，完整支持 ed25519 / RSA / ECDSA 密钥），支持：
 
 | 平台 | 架构 | 部署目标 |
 |------|------|----------|
@@ -27,7 +27,9 @@ libgit2 的 Objective-C 封装 SDK，附带可运行 Demo，已制作成 CocoaPo
 │       ├── LGTransferProgress.h/.m # 传输进度对象（对象数/字节数）
 │       ├── LGError.h/.m        # NSError 错误封装
 │       └── Internal/           # 内部头文件（不对外公开）
-├── External/libgit2/           # libgit2 v1.8.4 源码（构建产物在 build/ 下，已 gitignore）
+├── External/libgit2/           # libgit2 v1.8.4 源码 + 预编译产物（build/lib、build/include）
+├── External/libssh2/           # libssh2 v1.11.1 源码（SSH 传输）
+├── External/openssl/           # OpenSSL v3.4.1 源码（libssh2 的加密后端）
 ├── Scripts/build_libgit2.sh    # libgit2 全平台构建脚本
 ├── Demo/                       # macOS 命令行 Demo（build.sh 一键编译运行）
 └── Demo-iOS/                   # iOS App Demo（Podfile + 工程生成脚本）
@@ -40,7 +42,7 @@ libgit2 的 Objective-C 封装 SDK，附带可运行 Demo，已制作成 CocoaPo
 Podfile 中声明（已发布到 GitHub，预编译产物随仓库分发，开箱即用）：
 
 ```ruby
-pod 'libgit2Objc', :git => 'https://github.com/lsgeek/libgit2Objc.git', :tag => '0.3.0'
+pod 'libgit2Objc', :git => 'https://github.com/lsgeek/libgit2Objc.git', :tag => '0.4.0'
 ```
 
 本地开发时使用路径引用更方便：
@@ -120,6 +122,17 @@ origin.password = @"token";
 [origin pullWithError:nil];               // fetch + 合并（fast-forward 或自动 merge commit）
 [origin fetchWithError:nil];              // 仅拉取远程跟踪分支
 
+// SSH 密钥认证（ed25519 / RSA / ECDSA 均支持）
+LGRemoteCredentials *ssh = [[LGRemoteCredentials alloc] init];
+ssh.SSHPrivateKeyPath = @"~/.ssh/id_ed25519";   // 公钥自动取 私钥 + ".pub"，口令用 sshPassphrase
+LGRepository *repo2 = [LGRepository cloneFromURL:@"git@github.com:you/private.git"
+                                          toPath:path
+                                     credentials:ssh
+                                           error:nil];
+LGRemote *origin2 = [repo2 remoteWithName:@"origin" error:nil];
+[origin2 applyCredentials:ssh];       // 后续 fetch / push / pull 复用同一认证
+// ssh.useSSHAgent = YES;             // macOS 上也可优先走 ssh-agent
+
 // 异步接口：后台队列执行，进度与完成回调均在主线程（可直接刷新 UI）
 [origin pullWithProgress:^(LGTransferProgress *progress) {
     NSLog(@"%@", progress.localizedDescription);   // 如 "12/30 对象，已接收 45 KB"
@@ -144,3 +157,4 @@ rm -rf External/libgit2/build
 
 - 本项目：MIT（见 LICENSE）
 - libgit2：GPLv2 with Linking Exception（见 External/libgit2/COPYING），静态链接不受 GPL 传染性影响
+- libssh2：BSD-3-Clause；OpenSSL：Apache-2.0（见各源码目录）
