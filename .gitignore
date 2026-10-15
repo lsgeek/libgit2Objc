@@ -1,0 +1,15 @@
+# libgit2 构建产物（体积大，首次 pod install / 运行脚本时自动生成）
+External/libgit2/build/
+
+# Demo 构建产物
+build-demo/
+
+# iOS Demo
+Demo-iOS/Pods/
+Demo-iOS/DemoApp.xcworkspace/
+Demo-iOS/Podfile.lock
+Demo-iOS/DemoApp.xcodeproj/
+
+# 其他
+.DS_Store
+xcuserdata/
