@@ -1,4 +1,5 @@
-/build/
+# /build/ 已被注释：本项目需要提交预编译产物（libgit2.xcframework），供 pod 开箱即用
+# /build/
 .DS_Store
 *~
 .*.swp

@@ -1,0 +1,14 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/liuonion/iOSLibs/libgit2Objc/External/libgit2/build/iphonesimulator/cmake_install.cmake",
+		"/Users/liuonion/iOSLibs/libgit2Objc/External/libgit2/build/iphonesimulator/src/cmake_install.cmake",
+		"/Users/liuonion/iOSLibs/libgit2Objc/External/libgit2/build/iphonesimulator/deps/llhttp/cmake_install.cmake",
+		"/Users/liuonion/iOSLibs/libgit2Objc/External/libgit2/build/iphonesimulator/deps/pcre/cmake_install.cmake",
+		"/Users/liuonion/iOSLibs/libgit2Objc/External/libgit2/build/iphonesimulator/deps/xdiff/cmake_install.cmake",
+		"/Users/liuonion/iOSLibs/libgit2Objc/External/libgit2/build/iphonesimulator/deps/ntlmclient/cmake_install.cmake",
+		"/Users/liuonion/iOSLibs/libgit2Objc/External/libgit2/build/iphonesimulator/src/libgit2/cmake_install.cmake",
+		"/Users/liuonion/iOSLibs/libgit2Objc/External/libgit2/build/iphonesimulator/src/util/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
