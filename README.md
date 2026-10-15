@@ -35,16 +35,16 @@ libgit2 的 Objective-C 封装 SDK，附带可运行 Demo，已制作成 CocoaPo
 
 ### 1. 作为 CocoaPods 组件使用
 
-Podfile 中声明（本地路径方式）：
+Podfile 中声明（已发布到 GitHub，预编译产物随仓库分发，开箱即用）：
+
+```ruby
+pod 'libgit2Objc', :git => 'https://github.com/lsgeek/libgit2Objc.git', :tag => '0.1.0'
+```
+
+本地开发时使用路径引用更方便：
 
 ```ruby
 pod 'libgit2Objc', :path => '/path/to/libgit2Objc'
-```
-
-发布到私有/公有 Specs 仓库后，即可按名字引用：
-
-```ruby
-pod 'libgit2Objc', '~> 0.1.0'
 ```
 
 首次 `pod install` 时，若 `External/libgit2/build/` 下没有预编译产物，
