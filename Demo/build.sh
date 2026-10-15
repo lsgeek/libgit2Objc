@@ -13,6 +13,7 @@ clang -fobjc-arc -O0 -g \
     -I"$ROOT_DIR/libgit2Objc/Classes" \
     -I"$ROOT_DIR/libgit2Objc/Classes/Internal" \
     -I"$HEADERS" \
+    -I"$ROOT_DIR/External/libgit2/build/include-openssl" \
     "$ROOT_DIR"/libgit2Objc/Classes/*.m \
     "$ROOT_DIR"/libgit2Objc/Classes/Internal/*.m \
     "$ROOT_DIR/Demo/main.m" \

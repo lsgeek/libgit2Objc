@@ -4,6 +4,7 @@
 External/libgit2/build/*
 !External/libgit2/build/lib/
 !External/libgit2/build/include/
+!External/libgit2/build/include-openssl/
 
 # Demo 构建产物
 build-demo/

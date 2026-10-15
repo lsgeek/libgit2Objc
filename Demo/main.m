@@ -202,7 +202,24 @@ int main(int argc, const char *argv[]) {
         LGAssert([sshOrigin fetchWithError:&error], error.description);
         NSLog(@"✅ SSH 认证 fetch 成功");
 
-        // ---------- 12. 用短 SHA 查找提交 ----------
+        // ---------- 12. App 内生成 SSH 密钥对 ----------
+        section(@"App 内生成 SSH 密钥对");
+        LGSSHKeyPair *newPair = [LGSSHKeyGenerator generateEd25519KeyPairWithComment:@"demo@libgit2objc"
+                                                                               error:&error];
+        LGAssert(newPair, error.description);
+        NSLog(@"类型: %@", newPair.keyType);
+        NSLog(@"公钥（可添加到 GitHub: Settings -> SSH keys）: %@", newPair.publicKey);
+        NSLog(@"指纹: %@", newPair.SHA256Fingerprint);
+        NSString *keyDir = [baseDir stringByAppendingPathComponent:@"app-keys"];
+        [[NSFileManager defaultManager] createDirectoryAtPath:keyDir withIntermediateDirectories:YES attributes:nil error:nil];
+        [newPair writePrivateKeyToFile:[keyDir stringByAppendingPathComponent:@"id_app"] error:nil];
+        [newPair writePublicKeyToFile:[keyDir stringByAppendingPathComponent:@"id_app.pub"] error:nil];
+        LGSSHKeyPair *rsaPair = [LGSSHKeyGenerator generateRSAKeyPairWithKeySize:2048 comment:nil error:&error];
+        LGAssert(rsaPair, error.description);
+        NSLog(@"RSA(2048) 指纹: %@", rsaPair.SHA256Fingerprint);
+        NSLog(@"✅ 密钥对已生成并保存到: %@", keyDir);
+
+        // ---------- 13. 用短 SHA 查找提交 ----------
         section(@"按短 SHA 查找提交");
         LGCommit *found = [clone commitWithOID:commit2.shortOID error:&error];
         LGAssert(found, error.description);

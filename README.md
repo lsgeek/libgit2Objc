@@ -24,6 +24,8 @@ libgit2 的 Objective-C 封装 SDK，附带可运行 Demo，已制作成 CocoaPo
 │       ├── LGSignature.h/.m    # 提交签名（name/email/date）
 │       ├── LGStatusEntry.h/.m  # 工作区状态条目
 │       ├── LGRemote.h/.m       # 远程仓库：fetch / push / pull（同步 + 异步）
+│       ├── LGRemoteCredentials.h/.m # 认证配置（HTTPS 密码 / SSH 密钥）
+│       ├── LGSSHKeyPair.h/.m   # App 内 SSH 密钥对生成（ed25519 / RSA，OpenSSH 格式）
 │       ├── LGTransferProgress.h/.m # 传输进度对象（对象数/字节数）
 │       ├── LGError.h/.m        # NSError 错误封装
 │       └── Internal/           # 内部头文件（不对外公开）
@@ -42,7 +44,7 @@ libgit2 的 Objective-C 封装 SDK，附带可运行 Demo，已制作成 CocoaPo
 Podfile 中声明（已发布到 GitHub，预编译产物随仓库分发，开箱即用）：
 
 ```ruby
-pod 'libgit2Objc', :git => 'https://github.com/lsgeek/libgit2Objc.git', :tag => '0.4.0'
+pod 'libgit2Objc', :git => 'https://github.com/lsgeek/libgit2Objc.git', :tag => '0.5.0'
 ```
 
 本地开发时使用路径引用更方便：
@@ -132,6 +134,13 @@ LGRepository *repo2 = [LGRepository cloneFromURL:@"git@github.com:you/private.gi
 LGRemote *origin2 = [repo2 remoteWithName:@"origin" error:nil];
 [origin2 applyCredentials:ssh];       // 后续 fetch / push / pull 复用同一认证
 // ssh.useSSHAgent = YES;             // macOS 上也可优先走 ssh-agent
+
+// App 内生成密钥对（引导用户把公钥粘贴到 GitHub/GitLab，私钥存 Keychain 或沙盒）
+LGSSHKeyPair *pair = [LGSSHKeyGenerator generateEd25519KeyPairWithComment:@"my-app"
+                                                                    error:&error];
+NSLog(@"%@", pair.publicKey);          // ssh-ed25519 AAAA... my-app
+NSLog(@"%@", pair.SHA256Fingerprint);  // SHA256:xxx，方便与服务器端核对
+[pair writePrivateKeyToFile:keyPath error:nil];   // 权限 0600，建议同时存入 Keychain
 
 // 异步接口：后台队列执行，进度与完成回调均在主线程（可直接刷新 UI）
 [origin pullWithProgress:^(LGTransferProgress *progress) {

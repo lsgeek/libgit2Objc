@@ -150,6 +150,11 @@ xcodebuild -create-xcframework \
 # 头文件（使用 macOS 构建产出的即可，均为 Apple 平台通用）
 cp -R "$BUILD_DIR/install-macos/include/." "$OUT_INC_DIR/"
 
+# OpenSSL 头文件（SDK 的密钥生成类编译需要，已随库一起静态链接）
+rm -rf "$BUILD_DIR/include-openssl"
+mkdir -p "$BUILD_DIR/include-openssl"
+cp -R "$BUILD_DIR/openssl-macos-arm64/include/openssl" "$BUILD_DIR/include-openssl/"
+
 echo "==> 构建完成:"
 ls "$OUT_LIB_DIR/libgit2.xcframework/"
 lipo -info "$OUT_LIB_DIR/libgit2.xcframework/ios-arm64/libgit2-merged.a"
